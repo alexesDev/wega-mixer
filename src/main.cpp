@@ -38,6 +38,7 @@ class Display {
   void setCursor(int x, int y);
   void print(const __FlashStringHelper *text);
   void print(const Printable &text);
+  void print(const char *text);
   void print(char ch);
   void printf(const char *format, ...);
   void printf_P(PGM_P format, ...);
@@ -64,10 +65,19 @@ void Display::display() {
 }
 
 void Display::setCursor(int x, int y) {
+  #ifdef SSD1306
+  lcd.setCursor(x, y * 8);
+  #else
   lcd.setCursor(x, y);
+  #endif
 }
 
 void Display::print(const __FlashStringHelper *text) {
+  lcd.print(text);
+  display();
+}
+
+void Display::print(const char *text) {
   lcd.print(text);
   display();
 }
@@ -224,11 +234,19 @@ void setup() {
     mcp.pinMode(pinReverse[i], OUTPUT);
   }
 
+  #ifdef SCALE_DOUT_PIN
+  scale.begin(SCALE_DOUT_PIN, SCALE_SCK_PIN);
+  #else
   scale.begin(D5, D6); // DOUT = D5 SCK = D6;
+  #endif
   scale.set_scale(scale_calibration_A);
   scale.power_up();
-  delay (3000);
-  tareScalesWithCheck(255);  
+  
+  lcd.setCursor(0, 0);
+  lcd.print("Tare scales...");
+
+  tareScalesWithCheck(255);
+  delay(3000);
   
   lcd.clear();
   setState(STATE_READY);
