@@ -13,11 +13,98 @@ const char FW_version[] PROGMEM = "2.1.5";
 #include <ArduinoOTA.h>
 #include <ESP8266HTTPClient.h>
 #include <Wire.h>
-#include <LiquidCrystal_I2C.h>
+
 #include <HX711.h>
 #include <Adafruit_MCP23017.h>
 
 #include <config.h>
+
+#ifdef SSD1306
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#else
+#include <LiquidCrystal_I2C.h>
+#endif
+
+class Display {
+  #ifdef SSD1306
+  Adafruit_SSD1306 lcd = Adafruit_SSD1306(128, 32, &Wire);
+  #else
+  LiquidCrystal_I2C lcd(0x27, 16, 2); // Check I2C address of LCD, normally 0x27 or 0x3F // SDA = D1, SCL = D2
+  #endif
+
+  public:
+  void init();
+  void setCursor(int x, int y);
+  void print(const __FlashStringHelper *text);
+  void print(const Printable &text);
+  void print(char ch);
+  void printf(const char *format, ...);
+  void printf_P(PGM_P format, ...);
+  void clear();
+  void display();
+};
+
+void Display::init() {
+  #ifdef SSD1306
+  lcd.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  lcd.setTextSize(1);
+  lcd.setTextColor(SSD1306_WHITE);
+  clear();
+  #else
+  lcd.init(); 
+  lcd.backlight();
+  #endif
+}
+
+void Display::display() {
+  #ifdef SSD1306
+  lcd.display();
+  #endif
+}
+
+void Display::setCursor(int x, int y) {
+  lcd.setCursor(x, y);
+}
+
+void Display::print(const __FlashStringHelper *text) {
+  lcd.print(text);
+  display();
+}
+
+void Display::print(const Printable &text) {
+  lcd.print(text);
+  display();
+}
+
+void Display::print(char ch) {
+  lcd.print(ch);
+  display();
+}
+
+void Display::clear() {
+  #ifdef SSD1306
+  lcd.clearDisplay();
+  #else
+  lcd.clear();
+  #endif
+}
+
+void Display::printf(const char *format, ...) {
+  va_list argptr;
+  va_start(argptr, format);
+  lcd.printf(format, argptr);
+  va_end(argptr);
+  display();
+}
+
+void Display::printf_P(PGM_P format, ...) {
+  va_list argptr;
+  va_start(argptr, format);
+  lcd.printf_P(format, argptr);
+  va_end(argptr);
+  display();
+}
 
 // Assign ports names
 // Here is the naming convention:
@@ -85,7 +172,7 @@ unsigned long sTime, eTime;
 
 
 Adafruit_MCP23017 mcp;
-LiquidCrystal_I2C lcd(0x27, 16, 2); // Check I2C address of LCD, normally 0x27 or 0x3F // SDA = D1, SCL = D2
+Display lcd;
 HX711 scale;
 ESP8266WebServer server(80);
 State state;
@@ -95,10 +182,13 @@ void setState(State s);
 
 
 void setup() {
+  #ifdef SDA_PIN
+  Wire.begin(SDA_PIN, SCL_PIN);
+  #else
   Wire.begin(D1, D2);
-  lcd.init(); 
-  lcd.backlight();
-
+  #endif
+  
+  lcd.init();
   lcd.setCursor(0, 0);
   lcd.print(F("ver: "));
   lcd.print(FPSTR(FW_version));
@@ -106,6 +196,7 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {delay(500);}
+  lcd.clear();
   lcd.setCursor(0, 1); 
   lcd.print(WiFi.localIP()); 
 
