@@ -220,6 +220,7 @@ void setup() {
   server.on("/rest/test",    handleTest);
   server.on("/",             mainPage);
   server.on("/calibration",  calibrationPage);
+  server.on("/testpumps",    handleTestPumps);
   server.on("/style.css",    cssPage);
   server.begin();
   ArduinoOTA.onStart([]() {});

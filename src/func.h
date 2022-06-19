@@ -501,3 +501,54 @@ void handleStart() {
   lcd.clear();
 }
 
+typedef void (*PumpAction)(int i);
+
+void execAction(int i, PumpAction action) {
+  if (i > -1 && i < PUMPS_NO) {
+    action(i);
+  }
+}
+
+String getPumpActionForm(String action, int i) {
+  String v = "<form>";
+  v += String("<button>") + action + "</button>";
+  v += String("<input type='hidden' name='") + action + "' value='" + i + "'>";
+  v += "</form>";
+
+  return v;
+}
+
+void handleTestPumps() {
+  for (uint8_t i = 0; i < server.args(); ++i) {
+    const String &name = server.argName(i);
+
+    if (name == "start") {
+      execAction(server.arg(i).toInt(), pumpStart);
+    } else if (name == "reverse") {
+      execAction(server.arg(i).toInt(), pumpReverse);
+    } else if (name == "stop") {
+      execAction(server.arg(i).toInt(), pumpStop);
+    }
+  }
+
+  String content;
+
+  content += "<style type='text/css'>";
+  content += "form { padding: 0; margin: 0 }";
+  content += "td { padding: 5px }";
+  content += "</style>";
+  content += "<a href='/'>Back</a>";
+  content += "<table>";
+    
+  for (uint8_t i = 0; i < PUMPS_NO; ++i) {
+    content += String("<tr><td>") + names[i] + "</td>";
+    content += String("<td>") + getPumpActionForm("start", i) + "</td>";
+    content += String("<td>") + getPumpActionForm("reverse", i) + "</td>";
+    content += String("<td>") + getPumpActionForm("stop", i) + "</td>";
+    content += "</tr>";
+  }
+
+  content += "</table>";
+
+  server.send(200, "text/html", content);
+}
